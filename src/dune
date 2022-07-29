@@ -1,0 +1,5 @@
+(executable
+ (name better_chesscom)
+ (preprocess
+  (pps lwt_ppx))
+ (libraries yojson opium lwt))
