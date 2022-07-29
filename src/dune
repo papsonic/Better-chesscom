@@ -2,4 +2,4 @@
  (name better_chesscom)
  (preprocess
   (pps lwt_ppx))
- (libraries yojson opium lwt))
+ (libraries yojson cohttp-lwt-unix lwt str))
