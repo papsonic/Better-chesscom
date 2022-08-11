@@ -73,7 +73,11 @@ let get_search callback =
         else Js._true)
 
 let onload _ =
-  get_search (fun text -> print_endline @@ Js.to_string text);
+  get_search (fun text ->
+  (let* link = main @@ Js.to_string text in
+  print_endline link
+  |> Lwt.return)
+  |> Lwt_main.run);
   Js._false
 
 let () = Dom_html.window##.onload := Dom_html.handler onload
