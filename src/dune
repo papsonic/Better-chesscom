@@ -1,5 +1,6 @@
 (executable
+ (modes js)
  (name better_chesscom)
  (preprocess
-  (pps lwt_ppx))
- (libraries yojson cohttp-lwt-unix lwt str))
+  (pps lwt_ppx js_of_ocaml-ppx))
+ (libraries js_of_ocaml-lwt yojson lwt str cohttp-lwt-jsoo cohttp))
