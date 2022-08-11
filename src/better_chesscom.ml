@@ -77,7 +77,7 @@ let onload _ =
   (let* link = main @@ Js.to_string text in
   print_endline link
   |> Lwt.return)
-  |> Lwt_main.run);
+  |> ignore);
   Js._false
 
 let () = Dom_html.window##.onload := Dom_html.handler onload
