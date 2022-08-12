@@ -7,10 +7,19 @@ open Cohttp_lwt
 open Cohttp_lwt_jsoo
 open Js_of_ocaml
 
+type user = {
+  username: string;
+}
+
+type game = {
+  white: user;
+  black: user;
+  link: string;
+}
+
 let doc = Dom_html.window##.document
 let ( <+> ) = Dom.appendChild
 let ( <-> ) = Dom.removeChild
-
 
 let json_of_body body =
   let* str = body |> Body.to_string in
@@ -45,6 +54,10 @@ let get_last_game_json username =
 
 let get_pgn json = json |> Safe.Util.member "pgn" |> Safe.Util.to_string
 
+let get_user json color =
+  let profile = Safe.Util.member color json in
+  {username = profile |> Safe.Util.member "username" |> Safe.Util.to_string}
+
 let is_black json username =
   let black = json |> Safe.Util.member "black" |> Safe.Util.member "username" |> Safe.Util.to_string in
   black = username
@@ -63,7 +76,12 @@ let get_lichess_url pgn is_black =
 
 let main username =
   let* last_game = get_last_game_json username in
-  get_lichess_url (get_pgn last_game) (is_black last_game username)
+  let* link = get_lichess_url (get_pgn last_game) (is_black last_game username) in
+  {
+    white = get_user last_game "white";
+    black = get_user last_game "black";
+    link = link
+  } |> Lwt.return
 
 let get_search callback =
   let search_bar =
@@ -77,18 +95,24 @@ let get_search callback =
           Js._false)
         else Js._true)
 
+let games_screen page game =
+  let button = Dom_html.createP doc in
+  button##.innerHTML :=
+    Js.string ("<a class='button' href='" ^ game.link ^ "'>Analyse</a>");
+  let overview = Dom_html.createP doc in
+  overview##.innerHTML :=
+    Js.string ("<a>" ^ game.white.username ^ "-" ^ game.black.username ^ "</a>");
+  doc##.body <+> overview;
+  doc##.body <+> button;
+  page <+> doc
+
 let onload _ =
   get_search (fun text ->
   let page = Dom_html.getElementById "main" in
   let login = Dom_html.getElementById "login-screen" in
   page <-> login;
-
-  (let* link = main @@ Js.to_string text in
-  let p = Dom_html.createP doc in
-  p##.innerHTML :=
-    Js.string ("<a class='button' href='" ^ link ^ "'>Analyse</a>");
-  doc##.body <+> p;
-  page <+> doc
+  (let* gm = main @@ Js.to_string text in
+  games_screen page gm
   |> Lwt.return)
   |> Lwt.ignore_result);
   Js._false
