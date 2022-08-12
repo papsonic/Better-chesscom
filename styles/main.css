@@ -1,4 +1,11 @@
 
+.button {
+    display: inline-block;
+    padding: 3px 5px;
+    border: 1px solid #000;
+    background: #eee;
+}
+
 body {
     background-color:rgb(40, 40, 40);
     color:rgb(214, 93, 14)

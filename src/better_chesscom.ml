@@ -7,6 +7,11 @@ open Cohttp_lwt
 open Cohttp_lwt_jsoo
 open Js_of_ocaml
 
+let doc = Dom_html.window##.document
+let ( <+> ) = Dom.appendChild
+let ( <-> ) = Dom.removeChild
+
+
 let json_of_body body =
   let* str = body |> Body.to_string in
   str |> Safe.from_string |> Lwt.return
@@ -32,7 +37,7 @@ let get_last_game_json username =
   let get_last_from_json_list json key =
     json
     |> Safe.Util.member key |> Safe.Util.to_list
-    |> (fun lst -> List.nth lst ((List.length lst) - 1)) in
+    |> (fun lst -> List.nth (List.rev lst) 0) in
   let* archives = get_json ("https://api.chess.com/pub/player/" ^ username ^ "/games/archives") in
   let* games = get_last_from_json_list archives "archives" |> Safe.Util.to_string
   |> get_json in
@@ -74,10 +79,18 @@ let get_search callback =
 
 let onload _ =
   get_search (fun text ->
+  let page = Dom_html.getElementById "main" in
+  let login = Dom_html.getElementById "login-screen" in
+  page <-> login;
+
   (let* link = main @@ Js.to_string text in
-  print_endline link
+  let p = Dom_html.createP doc in
+  p##.innerHTML :=
+    Js.string ("<a class='button' href='" ^ link ^ "'>Analyse</a>");
+  doc##.body <+> p;
+  page <+> doc
   |> Lwt.return)
-  |> ignore);
+  |> Lwt.ignore_result);
   Js._false
 
 let () = Dom_html.window##.onload := Dom_html.handler onload
