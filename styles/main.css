@@ -1,12 +1,26 @@
 
+body {
+    background-color: #282828;
+    color:#eddbb2
+}
+
 .button {
     display: inline-block;
     padding: 3px 5px;
     border: 1px solid #000;
-    background: #eee;
+    background: #eee
 }
 
-body {
-    background-color:rgb(40, 40, 40);
-    color:rgb(214, 93, 14)
+#login-screen{
+    text-align:center;
+}
+
+.overview {
+    justify-content: space-between; 
+    display: flex;
+    width: 300px;
+    height: 60px;
+    padding-right: 10px;
+    padding-left: 10px;
+    background-color: green;
 }

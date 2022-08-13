@@ -96,14 +96,16 @@ let get_search callback =
         else Js._true)
 
 let games_screen page game =
+  let div = Dom_html.createDiv doc in div##.className := Js.string "overview";
   let button = Dom_html.createP doc in
   button##.innerHTML :=
     Js.string ("<a class='button' href='" ^ game.link ^ "'>Analyse</a>");
   let overview = Dom_html.createP doc in
   overview##.innerHTML :=
-    Js.string ("<a>" ^ game.white.username ^ "-" ^ game.black.username ^ "</a>");
-  doc##.body <+> overview;
-  doc##.body <+> button;
+    Js.string ("<a>" ^ game.white.username ^ " - " ^ game.black.username ^ "</a>");
+  div <+> overview;
+  div <+> button;
+  doc##.body <+> div;
   page <+> doc
 
 let onload _ =
