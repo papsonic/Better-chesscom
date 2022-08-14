@@ -43,7 +43,7 @@ let post_urlencoded url key content =
   >>= fun (_, body) ->
     json_of_body body
 
-let get_last_game_json username =
+let get_monthly_games username =
   let get_last_from_json_list json key =
     json
     |> Safe.Util.member key |> Safe.Util.to_list
@@ -51,7 +51,7 @@ let get_last_game_json username =
   let* archives = get_json ("https://api.chess.com/pub/player/" ^ username ^ "/games/archives") in
   let* games = get_last_from_json_list archives "archives" |> Safe.Util.to_string
   |> get_json in
-  get_last_from_json_list games "games" |> Lwt.return
+  games |> Safe.Util.member "games" |> Safe.Util.to_list |> Lwt.return
 
 let get_pgn json = json |> Safe.Util.member "pgn" |> Safe.Util.to_string
 
@@ -76,13 +76,17 @@ let get_lichess_url pgn is_black =
   else Lwt.return str
 
 let main username =
-  let* last_game = get_last_game_json username in
-  {
-    white = get_user last_game "white";
-    black = get_user last_game "black";
-    pgn = get_pgn last_game;
-    is_black = (is_black last_game username)
-  } |> Lwt.return
+  let* games = get_monthly_games username in
+  let rec get_games = function
+    | hd :: tl ->
+      {
+      white = get_user hd "white";
+      black = get_user hd "black";
+      pgn = get_pgn hd;
+      is_black = (is_black hd username)
+      } :: (get_games tl)
+    | _ -> [] in
+  get_games games |> Lwt.return
 
 let get_search callback =
   let search_bar =
@@ -127,14 +131,9 @@ let onload _ =
   let login = Dom_html.getElementById "login-screen" in
   page <-> login;
   (let* gm = main @@ Js.to_string text in
-  games_screen page gm
+  games_screen page (List.nth gm 0) |> Lwt.ignore_result
   |> Lwt.return)
   |> Lwt.ignore_result);
   Js._false
 
 let () = Dom_html.window##.onload := Dom_html.handler onload
-
-(* let () =
-  Printexc.record_backtrace true;
-  Printexc.print_backtrace stdout;
-  Lwt_main.run (main "hikaru") |> print_string *)
