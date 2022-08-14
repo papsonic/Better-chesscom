@@ -14,7 +14,8 @@ type user = {
 type game = {
   white: user;
   black: user;
-  link: string;
+  pgn: string;
+  is_black: bool;
 }
 
 let doc = Dom_html.window##.document
@@ -76,11 +77,11 @@ let get_lichess_url pgn is_black =
 
 let main username =
   let* last_game = get_last_game_json username in
-  let* link = get_lichess_url (get_pgn last_game) (is_black last_game username) in
   {
     white = get_user last_game "white";
     black = get_user last_game "black";
-    link = link
+    pgn = get_pgn last_game;
+    is_black = (is_black last_game username)
   } |> Lwt.return
 
 let get_search callback =
@@ -97,16 +98,28 @@ let get_search callback =
 
 let games_screen page game =
   let div = Dom_html.createDiv doc in div##.className := Js.string "overview";
-  let button = Dom_html.createP doc in
-  button##.innerHTML :=
-    Js.string ("<a class='button' href='" ^ game.link ^ "'>Analyse</a>");
+  
+  let button = Dom_html.createButton ~_type:(Js.string "button") doc in
+    button##.innerText := Js.string "Analyse";
+    button##.value := Js.string game.pgn;
+    
+    Js_of_ocaml_lwt.Lwt_js_events.(async (fun () ->
+      let* _event = Js_of_ocaml_lwt.Lwt_js_events.click button in
+      let* link = get_lichess_url game.pgn game.is_black in
+      let bt = Dom_html.createP doc in
+      bt##.innerHTML :=
+        Js.string ("<a class='button' href='" ^ link ^ "'>Analyse</a>");
+      div <-> button;
+      div <+> bt;
+      Lwt.return_unit));
+
   let overview = Dom_html.createP doc in
   overview##.innerHTML :=
     Js.string ("<a>" ^ game.white.username ^ " - " ^ game.black.username ^ "</a>");
   div <+> overview;
   div <+> button;
   doc##.body <+> div;
-  page <+> doc
+  page <+> doc |> Lwt.return
 
 let onload _ =
   get_search (fun text ->
