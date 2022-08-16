@@ -100,30 +100,37 @@ let get_search callback =
           Js._false)
         else Js._true)
 
-let games_screen page game =
-  let div = Dom_html.createDiv doc in div##.className := Js.string "overview";
-  
-  let button = Dom_html.createButton ~_type:(Js.string "button") doc in
-    button##.innerText := Js.string "Analyse";
-    button##.value := Js.string game.pgn;
-    
-    Js_of_ocaml_lwt.Lwt_js_events.(async (fun () ->
-      let* _event = Js_of_ocaml_lwt.Lwt_js_events.click button in
-      let* link = get_lichess_url game.pgn game.is_black in
-      let bt = Dom_html.createP doc in
-      bt##.innerHTML :=
-        Js.string ("<a class='button' href='" ^ link ^ "'>Analyse</a>");
-      div <-> button;
-      div <+> bt;
-      Lwt.return_unit));
+let games_screen page games =
+  Lwt_list.iter_p
+    (fun game ->
+      let div = Dom_html.createDiv doc in
+      div##.className := Js.string "overview";
+      let button = Dom_html.createButton doc in
+      button##.innerHTML := Js.string "Analyse";
+      let overview = Dom_html.createP doc in
+      overview##.innerHTML :=
+        Js.string
+          ("<a>" ^ game.white.username ^ " - " ^ game.black.username ^ "</a>");
+      div <+> overview;
+      div <+> button;
+      page <+> div;
+      let* _event =
+        Js_of_ocaml_lwt.Lwt_js_events.(
+          seq_loop click button (fun _ _ ->
+              let* link = get_lichess_url game.pgn game.is_black in
+              let bt = Dom_html.createP doc in
+              bt##.innerHTML :=
+                Js.string ("<a class='button' href='" ^ link ^ "'>Analyse</a>");
+              div <-> button;
+              div <+> bt;
+              Lwt.return_unit))
+      in
 
-  let overview = Dom_html.createP doc in
-  overview##.innerHTML :=
-    Js.string ("<a>" ^ game.white.username ^ " - " ^ game.black.username ^ "</a>");
-  div <+> overview;
-  div <+> button;
-  doc##.body <+> div;
-  page <+> doc |> Lwt.return
+      div <+> button;
+      doc##.body <+> div;
+      page <+> doc;
+      Lwt.return_unit)
+    games
 
 let onload _ =
   get_search (fun text ->
@@ -131,7 +138,7 @@ let onload _ =
   let login = Dom_html.getElementById "login-screen" in
   page <-> login;
   (let* gm = main @@ Js.to_string text in
-  games_screen page (List.nth gm 0) |> Lwt.ignore_result
+  games_screen page gm |> Lwt.ignore_result
   |> Lwt.return)
   |> Lwt.ignore_result);
   Js._false
