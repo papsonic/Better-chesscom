@@ -18,7 +18,7 @@ body {
 .overview_won {
     justify-content: space-between; 
     display: flex;
-    width: 500px;
+    width: 1000px;
     height: 60px;
     padding-right: 10px;
     padding-left: 10px;
@@ -29,7 +29,7 @@ body {
 .overview_lost {
     justify-content: space-between; 
     display: flex;
-    width: 500px;
+    width: 1000px;
     height: 60px;
     padding-right: 10px;
     padding-left: 10px;

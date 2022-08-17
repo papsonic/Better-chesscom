@@ -16,6 +16,7 @@ type game = {
   white: user;
   black: user;
   pgn: string;
+  opening: string;
   time_control: string;
   time_class: string;
   is_black: bool;
@@ -74,6 +75,16 @@ let user_black json username =
 let get_time_class json =
   json |> Safe.Util.member "time_class" |> Safe.Util.to_string
 
+let get_opening pgn =
+  let re =
+    Re.seq [Re.str "openings/";
+            Re.group (Re.rep (Re.any));
+            Re.str {|[UTCD|}]
+    |> Re.compile |> (fun e -> Re.exec e pgn) in
+  re |> (fun e -> Re.Group.get e 1) 
+  |> Str.split (Str.regexp {|"|}) |> (fun lst -> List.nth lst 0)
+  |> Str.global_replace (Str.regexp "-") " "
+
 let get_time_control json =
   let time_and_increment =
     json |> Safe.Util.member "time_control" |> Safe.Util.to_string
@@ -103,10 +114,12 @@ let main username =
     | hd :: tl ->
       let is_black = user_black hd username in
       let black_won = has_black_won hd in
+      let pgn = get_pgn hd in
       {
       white = get_user hd "white";
       black = get_user hd "black";
-      pgn = get_pgn hd;
+      pgn = pgn;
+      opening = get_opening pgn;
       time_control = get_time_control hd;
       time_class = get_time_class hd;
       is_black = is_black;
@@ -127,11 +140,12 @@ let get_search callback =
           Js._false)
         else Js._true)
 
-let overview_string white black time_control time_class =
+let overview_string white black time_control time_class opening =
   let user_format username elo =
     username ^ " (" ^ elo ^ ")" in
   time_control ^ " (" ^ time_class ^ ") : " ^
-  (user_format white.username white.elo) ^ " - " ^ (user_format black.username black.elo) 
+  (user_format white.username white.elo) ^ " - " ^ (user_format black.username black.elo) ^
+  " : " ^ opening
 
 let games_screen page games =
   Lwt_list.iter_p
@@ -145,7 +159,10 @@ let games_screen page games =
       let overview = Dom_html.createP doc in
       overview##.innerHTML :=
         Js.string
-          ("<a>" ^ (overview_string game.white game.black game.time_control game.time_class) ^ "</a>");
+          ("<a>" ^ (overview_string
+                    game.white
+                    game.black
+                    game.time_control game.time_class game.opening) ^ "</a>");
       div <+> overview;
       div <+> button;
       page <+> div;
