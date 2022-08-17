@@ -17,6 +17,7 @@ type game = {
   black: user;
   pgn: string;
   time_control: string;
+  time_class: string;
   is_black: bool;
   has_won: bool
 }
@@ -70,6 +71,8 @@ let user_black json username =
   let black = json |> Safe.Util.member "black" |> Safe.Util.member "username" |> Safe.Util.to_string in
   black = username
 
+let get_time_class json =
+  json |> Safe.Util.member "time_class" |> Safe.Util.to_string
 
 let get_time_control json =
   let time_and_increment =
@@ -105,6 +108,7 @@ let main username =
       black = get_user hd "black";
       pgn = get_pgn hd;
       time_control = get_time_control hd;
+      time_class = get_time_class hd;
       is_black = is_black;
       has_won = (black_won && is_black) || (not black_won && not is_black)
       } :: (get_games tl)
@@ -123,10 +127,11 @@ let get_search callback =
           Js._false)
         else Js._true)
 
-let overview_string white black time_control =
+let overview_string white black time_control time_class =
   let user_format username elo =
     username ^ " (" ^ elo ^ ")" in
-  time_control ^ " " ^ (user_format white.username white.elo) ^ " - " ^ (user_format black.username black.elo) 
+  time_control ^ " (" ^ time_class ^ ") : " ^
+  (user_format white.username white.elo) ^ " - " ^ (user_format black.username black.elo) 
 
 let games_screen page games =
   Lwt_list.iter_p
@@ -140,7 +145,7 @@ let games_screen page games =
       let overview = Dom_html.createP doc in
       overview##.innerHTML :=
         Js.string
-          ("<a>" ^ (overview_string game.white game.black game.time_control) ^ "</a>");
+          ("<a>" ^ (overview_string game.white game.black game.time_control game.time_class) ^ "</a>");
       div <+> overview;
       div <+> button;
       page <+> div;
