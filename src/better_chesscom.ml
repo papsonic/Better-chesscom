@@ -16,6 +16,7 @@ type game = {
   black: user;
   pgn: string;
   is_black: bool;
+  has_won: bool
 }
 
 let doc = Dom_html.window##.document
@@ -59,7 +60,10 @@ let get_user json color =
   let profile = Safe.Util.member color json in
   {username = profile |> Safe.Util.member "username" |> Safe.Util.to_string}
 
-let is_black json username =
+let has_black_won json =
+  (json |> Safe.Util.member "black" |> Safe.Util.member "result" |> Safe.Util.to_string) = "win"
+
+let user_black json username =
   let black = json |> Safe.Util.member "black" |> Safe.Util.member "username" |> Safe.Util.to_string in
   black = username
 
@@ -79,11 +83,14 @@ let main username =
   let* games = get_monthly_games username in
   let rec get_games = function
     | hd :: tl ->
+      let is_black = user_black hd username in
+      let black_won = has_black_won hd in
       {
       white = get_user hd "white";
       black = get_user hd "black";
       pgn = get_pgn hd;
-      is_black = (is_black hd username)
+      is_black = is_black;
+      has_won = (black_won && is_black) || (not black_won && not is_black)
       } :: (get_games tl)
     | _ -> [] in
   get_games games |> Lwt.return
@@ -104,7 +111,9 @@ let games_screen page games =
   Lwt_list.iter_p
     (fun game ->
       let div = Dom_html.createDiv doc in
-      div##.className := Js.string "overview";
+      if game.has_won
+        then div##.className := Js.string "overview_won"
+        else div##.className := Js.string "overview_lost";
       let button = Dom_html.createButton doc in
       button##.innerHTML := Js.string "Analyse";
       let overview = Dom_html.createP doc in
