@@ -16,6 +16,7 @@ type game = {
   white: user;
   black: user;
   pgn: string;
+  time_control: string;
   is_black: bool;
   has_won: bool
 }
@@ -69,6 +70,18 @@ let user_black json username =
   let black = json |> Safe.Util.member "black" |> Safe.Util.member "username" |> Safe.Util.to_string in
   black = username
 
+
+let get_time_control json =
+  let time_and_increment =
+    json |> Safe.Util.member "time_control" |> Safe.Util.to_string
+    |> (fun str -> Str.split (Str.regexp "+") str) in
+  let time_in_min =
+    (List.nth time_and_increment 0) |> int_of_string |> (fun n -> n/60) |> string_of_int in
+  match time_and_increment with
+    | [_; increment] ->
+      time_in_min ^ "+" ^ increment
+    | _ -> time_in_min ^ "+0"
+
 let format_pgn pgn =
   pgn
   |> Str.global_replace (Str.regexp "%") ""
@@ -91,6 +104,7 @@ let main username =
       white = get_user hd "white";
       black = get_user hd "black";
       pgn = get_pgn hd;
+      time_control = get_time_control hd;
       is_black = is_black;
       has_won = (black_won && is_black) || (not black_won && not is_black)
       } :: (get_games tl)
@@ -109,10 +123,10 @@ let get_search callback =
           Js._false)
         else Js._true)
 
-let overview_string white black =
+let overview_string white black time_control =
   let user_format username elo =
     username ^ " (" ^ elo ^ ")" in
-  (user_format white.username white.elo) ^ " - " ^ (user_format black.username black.elo) 
+  time_control ^ " " ^ (user_format white.username white.elo) ^ " - " ^ (user_format black.username black.elo) 
 
 let games_screen page games =
   Lwt_list.iter_p
@@ -126,7 +140,7 @@ let games_screen page games =
       let overview = Dom_html.createP doc in
       overview##.innerHTML :=
         Js.string
-          ("<a>" ^ (overview_string game.white game.black) ^ "</a>");
+          ("<a>" ^ (overview_string game.white game.black game.time_control) ^ "</a>");
       div <+> overview;
       div <+> button;
       page <+> div;
