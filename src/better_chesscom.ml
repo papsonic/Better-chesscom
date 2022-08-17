@@ -9,6 +9,7 @@ open Js_of_ocaml
 
 type user = {
   username: string;
+  elo: string
 }
 
 type game = {
@@ -58,7 +59,8 @@ let get_pgn json = json |> Safe.Util.member "pgn" |> Safe.Util.to_string
 
 let get_user json color =
   let profile = Safe.Util.member color json in
-  {username = profile |> Safe.Util.member "username" |> Safe.Util.to_string}
+  {username = profile |> Safe.Util.member "username" |> Safe.Util.to_string;
+   elo = profile |> Safe.Util.member "rating" |> Safe.Util.to_int |> string_of_int}
 
 let has_black_won json =
   (json |> Safe.Util.member "black" |> Safe.Util.member "result" |> Safe.Util.to_string) = "win"
@@ -107,6 +109,11 @@ let get_search callback =
           Js._false)
         else Js._true)
 
+let overview_string white black =
+  let user_format username elo =
+    username ^ " (" ^ elo ^ ")" in
+  (user_format white.username white.elo) ^ " - " ^ (user_format black.username black.elo) 
+
 let games_screen page games =
   Lwt_list.iter_p
     (fun game ->
@@ -119,7 +126,7 @@ let games_screen page games =
       let overview = Dom_html.createP doc in
       overview##.innerHTML :=
         Js.string
-          ("<a>" ^ game.white.username ^ " - " ^ game.black.username ^ "</a>");
+          ("<a>" ^ (overview_string game.white game.black) ^ "</a>");
       div <+> overview;
       div <+> button;
       page <+> div;
