@@ -24,6 +24,9 @@ type game = {
 }
 
 let doc = Dom_html.window##.document
+
+let append_first n c = Dom.insertBefore n c (n##.firstChild)
+let ( <++> ) = append_first
 let ( <+> ) = Dom.appendChild
 let ( <-> ) = Dom.removeChild
 
@@ -108,25 +111,33 @@ let get_lichess_url pgn is_black =
   if is_black then Lwt.return @@ str ^ "/black"
   else Lwt.return str
 
+let get_infos username game =
+  let is_black = user_black game username in
+  let black_won = has_black_won game in
+  let pgn = get_pgn game in
+  {
+  white = get_user game "white";
+  black = get_user game "black";
+  pgn = pgn;
+  opening = get_opening pgn;
+  time_control = get_time_control game;
+  time_class = get_time_class game;
+  is_black = is_black;
+  has_won = (black_won && is_black) || (not black_won && not is_black)
+  }
+
 let main username =
   let* games = get_monthly_games username in
   let rec get_games = function
     | hd :: tl ->
-      let is_black = user_black hd username in
-      let black_won = has_black_won hd in
-      let pgn = get_pgn hd in
-      {
-      white = get_user hd "white";
-      black = get_user hd "black";
-      pgn = pgn;
-      opening = get_opening pgn;
-      time_control = get_time_control hd;
-      time_class = get_time_class hd;
-      is_black = is_black;
-      has_won = (black_won && is_black) || (not black_won && not is_black)
-      } :: (get_games tl)
+      (get_infos username hd):: (get_games tl)
     | _ -> [] in
   get_games games |> Lwt.return
+
+let get_last_game username =
+  let* games = get_monthly_games username in
+  games |> List.rev |> (fun lst -> List.nth lst 0)
+  |> get_infos username |> Lwt.return
 
 let get_search callback =
   let search_bar =
@@ -147,50 +158,63 @@ let overview_string white black time_control time_class opening =
   (user_format white.username white.elo) ^ " - " ^ (user_format black.username black.elo) ^
   " : " ^ opening
 
-let games_screen page games =
-  Lwt_list.iter_p
-    (fun game ->
-      let div = Dom_html.createDiv doc in
-      if game.has_won
-        then div##.className := Js.string "overview_won"
-        else div##.className := Js.string "overview_lost";
-      let button = Dom_html.createButton doc in
-      button##.innerHTML := Js.string "Analyse";
-      let overview = Dom_html.createP doc in
-      overview##.innerHTML :=
-        Js.string
-          ("<a>" ^ (overview_string
-                    game.white
-                    game.black
-                    game.time_control game.time_class game.opening) ^ "</a>");
-      div <+> overview;
-      div <+> button;
-      page <+> div;
-      let* _event =
-        Js_of_ocaml_lwt.Lwt_js_events.(
-          seq_loop click button (fun _ _ ->
-              let* link = get_lichess_url game.pgn game.is_black in
-              let bt = Dom_html.createP doc in
-              bt##.innerHTML :=
-                Js.string ("<a class='button' href='" ^ link ^ "'>Analyse</a>");
-              div <-> button;
-              div <+> bt;
-              Lwt.return_unit))
-      in
+let games_screen page games username =
+  let refresh = Dom_html.createButton doc in
+    refresh##.innerHTML := Js.string "Refresh";
+  page <+> refresh;
 
-      div <+> button;
-      doc##.body <+> div;
-      page <+> doc;
-      Lwt.return_unit)
-    (List.rev games)
+  let display_game game =
+    let div = Dom_html.createDiv doc in
+    if game.has_won
+      then div##.className := Js.string "overview_won"
+      else div##.className := Js.string "overview_lost";
+    let button = Dom_html.createButton doc in
+    button##.innerHTML := Js.string "Analyse";
+    let overview = Dom_html.createP doc in
+    overview##.innerHTML :=
+      Js.string
+        ("<a>" ^ (overview_string
+                  game.white
+                  game.black
+                  game.time_control game.time_class game.opening) ^ "</a>");
+    div <+> overview;
+    div <+> button;
+    page <++> div;
+    let* _event =
+      Js_of_ocaml_lwt.Lwt_js_events.(
+        seq_loop click button (fun _ _ ->
+            let* link = get_lichess_url game.pgn game.is_black in
+            let bt = Dom_html.createP doc in
+            bt##.innerHTML :=
+              Js.string ("<a class='button' href='" ^ link ^ "'>Analyse</a>");
+            div <-> button;
+            div <+> bt;
+            Lwt.return_unit))
+    in
+    page <++> div;
+    Lwt.return_unit in
+
+  let* () = Lwt_list.iter_p
+    (fun game -> display_game game) games
+    |> Lwt.ignore_result |> Lwt.return in
+
+    let rec event () : 'a Lwt.t  =
+      Js_of_ocaml_lwt.Lwt_js_events.(
+        seq_loop click refresh (fun _ _ ->
+          let* game = get_last_game username in
+          display_game game |> Lwt.ignore_result;
+          event ())) in
+    event () |> Lwt.ignore_result;
+    Lwt.return_unit
 
 let onload _ =
   get_search (fun text ->
   let page = Dom_html.getElementById "main" in
   let login = Dom_html.getElementById "login-screen" in
   page <-> login;
-  (let* gm = main @@ Js.to_string text in
-  games_screen page gm |> Lwt.ignore_result
+  (let username = Js.to_string text in
+  let* gm = main username in
+  games_screen page gm username |> Lwt.ignore_result
   |> Lwt.return)
   |> Lwt.ignore_result);
   Js._false
