@@ -162,7 +162,8 @@ let games_screen page games username =
   let refresh = Dom_html.createButton doc in
     refresh##.innerHTML := Js.string "Refresh";
   page <+> refresh;
-
+  let games_div = Dom_html.createDiv doc in
+  page <+> games_div;
   let display_game game =
     let div = Dom_html.createDiv doc in
     if game.has_won
@@ -179,7 +180,7 @@ let games_screen page games username =
                   game.time_control game.time_class game.opening) ^ "</a>");
     div <+> overview;
     div <+> button;
-    page <++> div;
+    games_div <++> div;
     let* _event =
       Js_of_ocaml_lwt.Lwt_js_events.(
         seq_loop click button (fun _ _ ->
@@ -191,7 +192,7 @@ let games_screen page games username =
             div <+> bt;
             Lwt.return_unit))
     in
-    page <++> div;
+    games_div <++> div;
     Lwt.return_unit in
 
   let* () = Lwt_list.iter_p
