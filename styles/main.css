@@ -4,6 +4,10 @@ body {
     color:#eddbb2;
 }
 
+.title {
+    font-size: 28px;
+}
+
 .button {
     display: inline-block;
     padding: 3px 5px;
@@ -35,4 +39,8 @@ body {
     padding-left: 10px;
     margin-bottom: 2px;
     background-color: red;
+}
+
+#search-bar {
+    width: 350px;
 }

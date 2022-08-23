@@ -182,7 +182,7 @@ let games_screen page games =
       doc##.body <+> div;
       page <+> doc;
       Lwt.return_unit)
-    games
+    (List.rev games)
 
 let onload _ =
   get_search (fun text ->
