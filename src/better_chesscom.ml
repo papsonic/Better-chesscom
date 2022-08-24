@@ -145,7 +145,7 @@ let main username max =
         else get_infos username hd :: get_games (acc + 1) tl
     | _ -> []
   in
-  get_games 0 games |> Lwt.return
+  get_games 0 (List.rev games) |> List.rev |> Lwt.return
 
 let get_last_game username =
   let* games = get_monthly_games username in
