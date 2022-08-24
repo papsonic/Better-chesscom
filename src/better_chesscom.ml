@@ -137,13 +137,15 @@ let get_infos username game =
     has_won = (black_won && is_black) || ((not black_won) && not is_black);
   }
 
-let main username =
+let main username max =
   let* games = get_monthly_games username in
-  let rec get_games = function
-    | hd :: tl -> get_infos username hd :: get_games tl
+  let rec get_games acc = function
+    | hd :: tl ->
+        if acc = max then []
+        else get_infos username hd :: get_games (acc + 1) tl
     | _ -> []
   in
-  get_games games |> Lwt.return
+  get_games 0 games |> Lwt.return
 
 let get_last_game username =
   let* games = get_monthly_games username in
@@ -229,7 +231,7 @@ let onload _ =
       let login = Dom_html.getElementById "login-screen" in
       page <-> login;
       (let username = Js.to_string text in
-       let* gm = main username in
+       let* gm = main username 60 in
        games_screen page gm username |> Lwt.ignore_result |> Lwt.return)
       |> Lwt.ignore_result);
   Js._false
