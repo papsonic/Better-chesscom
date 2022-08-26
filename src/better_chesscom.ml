@@ -185,6 +185,7 @@ let games_screen page games username =
     else div##.className := Js.string "overview_lost";
     let button = Dom_html.createButton doc in
     button##.innerHTML := Js.string "Analyse";
+    button##.className := Js.string "analyse-button";
     let overview = Dom_html.createP doc in
     overview##.innerHTML :=
       Js.string
@@ -201,7 +202,7 @@ let games_screen page games username =
             let* link = get_lichess_url game.pgn game.is_black in
             let bt = Dom_html.createP doc in
             bt##.innerHTML :=
-              Js.string ("<a class='button' href='" ^ link ^ "'>Analyse</a>");
+              Js.string ("<a class='link' href='" ^ link ^ "'>Analyse</a>");
             div <-> button;
             div <+> bt;
             Lwt.return_unit))
